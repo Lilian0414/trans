@@ -1,0 +1,4 @@
+Flask==3.0.3
+googletrans==4.0.2
+groq>=0.31.0,<1.0.0
+pykakasi>=2.3.0,<3.0.0

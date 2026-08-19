@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>日文歌詞翻譯</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="kicker"><span>歌詞手帖</span><span lang="ja">ことばをひらく</span></p>
+          <h1>把喜歡的歌，<br /><em>讀得更近一點。</em></h1>
+        </div>
+        <aside class="hero-note" aria-label="工具說明">
+          <span class="note-number" aria-hidden="true">翻譯筆記 01</span>
+          <p>貼上日文歌詞，保留原本的段落與節奏。完成後可以逐句比較，也能直接改成自己喜歡的說法。</p>
+          <p class="note-meta">原文 · 羅馬字 · 繁體中文</p>
+        </aside>
+      </header>
+
+      <form id="lyrics-form" class="translation-sheet" method="post">
+        <div class="label-row">
+          <label for="lyrics"><span class="step-number">01</span>把日文歌詞貼在這裡</label>
+          <span>最多 {{ "{:,}".format(max_length) }} 字元</span>
+        </div>
+        <textarea id="lyrics" name="lyrics" rows="11" maxlength="{{ max_length }}" placeholder="ここに歌詞を貼り付けてください…">{{ input_lyrics }}</textarea>
+        <p class="field-note">原本的空行會保留下來，Groq 也會參考整首歌的上下文。</p>
+        <fieldset class="provider-picker">
+          <legend><span class="step-number">02</span>挑一種翻譯方式</legend>
+          <label class="provider-option">
+            <input type="radio" name="provider" value="groq" {% if provider == "groq" %}checked{% endif %} />
+            <span class="provider-copy"><strong>語境翻譯</strong><small><b>Groq</b>　理解整首歌，譯文比較自然</small></span>
+          </label>
+          <label class="provider-option">
+            <input type="radio" name="provider" value="google" {% if provider == "google" %}checked{% endif %} />
+            <span class="provider-copy"><strong>快速直譯</strong><small><b>Google</b>　速度快，適合快速確認字義</small></span>
+          </label>
+        </fieldset>
+        {% if error %}<p id="form-error" class="error" role="alert">{{ error }}</p>{% endif %}
+        <div class="form-footer">
+          <div class="actions">
+            <button id="submit-button" class="primary" type="submit"><span class="button-label">翻譯這首歌</span><span class="loading-label" hidden>正在讀歌詞…</span></button>
+            <button id="clear-button" class="secondary" type="button">清空重來</button>
+          </div>
+          <p class="quota-note">Groq 免費額度較小，長歌若顯示等待時間，稍後再送出即可。</p>
+        </div>
+      </form>
+
+      {% if results %}
+      <section id="results" class="results" aria-labelledby="results-title">
+        <div class="results-header">
+          <div>
+            <p class="section-kicker">翻譯草稿</p>
+            <h2 id="results-title">一行一行，慢慢修成喜歡的樣子</h2>
+            <p class="results-hint">中文可以直接修改；複製和下載時，會使用畫面上目前的版本。</p>
+          </div>
+          <div class="result-actions">
+            <button id="copy-button" class="secondary" type="button">複製完整結果</button>
+            <button id="download-button" class="secondary" type="button">下載 TXT</button>
+          </div>
+        </div>
+        <div id="lyrics-output" class="lyrics-output">
+          {% for line in results %}
+            {% if line.is_blank %}
+              <div class="paragraph-break" aria-hidden="true"></div>
+            {% else %}
+              <article
+                class="lyric-line"
+                data-line-id="{{ line.id }}"
+                data-original="{{ line.original }}"
+                data-romaji="{{ line.romaji }}"
+                data-initial-translation="{{ line.chinese }}"
+                data-provider="{{ provider }}"
+              >
+                <div class="line-heading">
+                  <p class="original" lang="ja">{{ line.original }}</p>
+                  <div class="badges">
+                    <span class="provider-badge {% if provider == 'google' %}google{% else %}groq{% endif %}">{% if provider == "google" %}Google{% else %}Groq{% endif %}</span>
+                    <span class="edited-badge" hidden>已修改</span>
+                  </div>
+                </div>
+                <p class="romaji">{{ line.romaji }}</p>
+                <label class="translation-label" for="translation-{{ line.id }}">繁體中文翻譯</label>
+                <textarea id="translation-{{ line.id }}" class="translation-editor" rows="2" maxlength="4000" lang="zh-Hant">{{ line.chinese }}</textarea>
+
+                <div class="line-tools">
+                  <select class="style-select" aria-label="重新翻譯風格">
+                    <option value="自然、忠於原意">自然</option>
+                    <option value="更口語、使用台灣常見說法">更口語</option>
+                    <option value="盡量貼近日文原句結構與字義">更直譯</option>
+                    <option value="更有文學感，但不得偏離原意">更文藝</option>
+                  </select>
+                  <input class="custom-instruction" type="text" maxlength="300" placeholder="補充要求（選填）" aria-label="重新翻譯的補充要求" />
+                  <button class="line-button regenerate-button" type="button">Groq 重新翻譯</button>
+                  {% if provider != "google" %}<button class="line-button google-button" type="button">查看 Google 版本</button>{% endif %}
+                  <button class="line-button reset-line-button" type="button">還原</button>
+                </div>
+
+                <div class="candidate-panel groq-candidate" hidden>
+                  <p class="candidate-title">Groq 候選版本</p>
+                  <p class="candidate-text" lang="zh-Hant"></p>
+                  <div class="candidate-actions">
+                    <button class="apply-candidate primary compact" type="button">套用這版</button>
+                    <button class="dismiss-candidate secondary compact" type="button">保留原本</button>
+                  </div>
+                </div>
+
+                <div class="candidate-panel google-candidate" hidden>
+                  <p class="candidate-title">Google 參考版本</p>
+                  <p class="candidate-text" lang="zh-Hant"></p>
+                  <div class="candidate-actions">
+                    <button class="apply-candidate primary compact" type="button">套用 Google 版</button>
+                    <button class="dismiss-candidate secondary compact" type="button">保留原本</button>
+                  </div>
+                </div>
+                <p class="line-status" aria-live="polite"></p>
+              </article>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <p id="interaction-status" class="status" aria-live="polite"></p>
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
