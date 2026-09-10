@@ -118,7 +118,7 @@ function setButtonLoading(button, loading, loadingLabel = "處理中…") {
 function updateProviderBadge(article, provider) {
   article.dataset.provider = provider;
   const badge = article.querySelector(".provider-badge");
-  badge.textContent = provider === "google" ? "Google" : "Groq";
+  badge.textContent = provider === "google" ? "Google" : provider === "source" ? "原文" : "Groq";
   badge.className = `provider-badge ${provider}`;
 }
 
@@ -151,7 +151,7 @@ function restoreDraft() {
       const saved = draft.lines[article.dataset.lineId];
       if (!saved || typeof saved.text !== "string") continue;
       article.querySelector(".translation-editor").value = saved.text;
-      if (saved.provider === "groq" || saved.provider === "google") {
+      if (["groq", "google", "source"].includes(saved.provider)) {
         updateProviderBadge(article, saved.provider);
       }
       updateEditedState(article);
@@ -181,6 +181,19 @@ for (const article of lyricLines()) {
     updateEditedState(article);
     saveDraft();
     setLineStatus(article, "已儲存在這台裝置的瀏覽器中。", "success");
+  });
+
+  article.querySelector(".preserve-source-button").addEventListener("click", (event) => {
+    editor.value = article.dataset.original;
+    updateProviderBadge(article, "source");
+    updateEditedState(article);
+    article.querySelectorAll(".candidate-panel").forEach((panel) => {
+      panel.hidden = true;
+      panel.querySelector(".candidate-text").textContent = "";
+    });
+    saveDraft();
+    setLineStatus(article, "已保留這一句的原文。", "success");
+    flashButton(event.currentTarget, "✓ 已保留原文");
   });
 
   article.querySelector(".reset-line-button").addEventListener("click", (event) => {
@@ -298,7 +311,7 @@ document.querySelector("#download-button")?.addEventListener("click", (event) =>
   const blob = new Blob([buildPlainText()], { type: "text/plain;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "日文歌詞翻譯.txt";
+  link.download = "歌詞翻譯.txt";
   link.click();
   URL.revokeObjectURL(link.href);
   setStatus("✓ 下載已開始，內容包含目前所有修改。", "success");

@@ -34,10 +34,30 @@ def test_googletrans_batches_nonblank_lines_and_aligns_ids():
     assert client.calls == [(["君", "夜"], {"src": "ja", "dest": "zh-tw"})]
 
 
+def test_googletrans_preserves_chants_and_only_sends_translatable_lines():
+    client = FakeGoogleClient(SimpleNamespace(text="我喜歡你"))
+    translator = GoogleTransTranslator(translator_factory=lambda: client)
+
+    assert translator.translate(parse_lyrics("ラララ\n君が好き\noh-oh-oh")) == {
+        0: "ラララ",
+        1: "我喜歡你",
+        2: "oh-oh-oh",
+    }
+    assert client.calls == [(["君が好き"], {"src": "ja", "dest": "zh-tw"})]
+
+
 def test_googletrans_translates_one_reference_line():
     client = FakeGoogleClient(SimpleNamespace(text="想見你"))
     translator = GoogleTransTranslator(translator_factory=lambda: client)
     assert translator.translate_line("君に会いたい") == "想見你"
+
+
+def test_googletrans_reference_chant_returns_source_without_provider_call():
+    client = FakeGoogleClient(error=AssertionError("provider should not be called"))
+    translator = GoogleTransTranslator(translator_factory=lambda: client)
+
+    assert translator.translate_line("나 나 나") == "나 나 나"
+    assert client.calls == []
 
 
 def test_googletrans_wraps_connection_failures():

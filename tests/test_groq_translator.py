@@ -105,6 +105,22 @@ def test_pure_rhythmic_chants_stay_in_context_but_not_output_schema():
     assert list(schema["properties"]) == ["0"]
 
 
+def test_repeated_vocables_stay_in_context_without_being_translated():
+    lyrics = "ラ ラ ラ\n君が好き\noh-oh-oh"
+    completions = EchoCompletions()
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+
+    result = GroqTranslator(client=client).translate(parse_lyrics(lyrics))
+
+    assert result == {0: "ラ ラ ラ", 1: "翻譯 1", 2: "oh-oh-oh"}
+    payload = json.loads(completions.calls[0]["messages"][1]["content"])
+    assert payload["lines"] == [
+        {"id": 0, "text": "ラ ラ ラ", "translate": False},
+        {"id": 1, "text": "君が好き", "translate": True},
+        {"id": 2, "text": "oh-oh-oh", "translate": False},
+    ]
+
+
 def test_long_lyrics_do_not_trigger_recursive_or_batched_requests():
     lyrics = "\n".join(f"第 {number} 句" for number in range(70))
     completions = EchoCompletions()
@@ -218,3 +234,13 @@ def test_regenerate_line_rejects_wrong_returned_id():
             parse_lyrics("君\n夜"), 1, {0: "你", 1: "夜晚"}
         )
 
+
+def test_regenerate_chant_returns_source_without_provider_call():
+    client, calls = make_client(json.dumps({"id": 0, "translation": "不應使用"}))
+
+    result = GroqTranslator(client=client).regenerate_line(
+        parse_lyrics("la la la\n君"), 0, {0: "啦啦啦", 1: "你"}
+    )
+
+    assert result == "la la la"
+    assert calls.calls == []

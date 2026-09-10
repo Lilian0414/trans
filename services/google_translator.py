@@ -4,6 +4,7 @@ from typing import Any
 
 from googletrans import Translator
 
+from services.chant import is_preserved_chant_line
 from services.text_parser import ParsedLine
 
 
@@ -23,13 +24,31 @@ class GoogleTransTranslator:
         source_lines = [line for line in lines if not line.is_blank]
         if not source_lines:
             return {}
-        texts = [line.text for line in source_lines]
+
+        translations: dict[int, str] = {}
+        translatable_lines: list[ParsedLine] = []
+        for line in source_lines:
+            assert line.id is not None
+            if is_preserved_chant_line(line.text):
+                translations[line.id] = line.text
+            else:
+                translatable_lines.append(line)
+
+        if not translatable_lines:
+            return translations
+
+        texts = [line.text for line in translatable_lines]
         translated = self._run(self._translate_many(texts))
-        if len(translated) != len(source_lines):
+        if len(translated) != len(translatable_lines):
             raise GoogleTranslationError("Google 翻譯結果無法與歌詞對齊，請再試一次。")
-        return {line.id: text for line, text in zip(source_lines, translated, strict=True)}
+        for line, text in zip(translatable_lines, translated, strict=True):
+            assert line.id is not None
+            translations[line.id] = text
+        return translations
 
     def translate_line(self, text: str) -> str:
+        if is_preserved_chant_line(text):
+            return text
         translated = self._run(self._translate_many([text]))
         if not translated:
             raise GoogleTranslationError("Google 翻譯沒有傳回結果，請再試一次。")
