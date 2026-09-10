@@ -35,7 +35,9 @@ class FakeRomanizer:
 
 def test_get_works_without_api_key(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    assert app_module.app.test_client().get("/").status_code == 200
+    response = app_module.app.test_client().get("/")
+    assert response.status_code == 200
+    assert "<title>歌詞翻譯</title>" in response.get_data(as_text=True)
 
 
 def test_blank_post_does_not_call_translator(monkeypatch):
@@ -58,6 +60,7 @@ def test_success_post_renders_aligned_results(monkeypatch):
     assert 'class="paragraph-break"' in body
     assert 'class="translation-editor"' in body
     assert 'data-line-id="0"' in body
+    assert 'class="line-button preserve-source-button"' in body
 
 
 def test_service_error_is_friendly_and_sanitized(monkeypatch):
@@ -90,6 +93,11 @@ def test_clear_interaction_has_reset_targets():
     assert '"\\n".repeat(2 + preservedBlankLines)' in script
     assert 'querySelector(".translation-editor").value' in script
     assert 'flashButton(button, "✓ 已複製")' in script
+    assert 'editor.value = article.dataset.original' in script
+    assert 'updateProviderBadge(article, "source")' in script
+    assert 'localStorage.setItem(DRAFT_STORAGE_KEY' in script
+    assert 'panel.querySelector(".candidate-text").textContent = ""' in script
+    assert 'link.download = "歌詞翻譯.txt"' in script
 
 
 def test_google_provider_is_selectable_for_full_translation(monkeypatch):

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>日文歌詞翻譯</title>
+    <title>歌詞翻譯</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
@@ -96,6 +96,7 @@
                   <input class="custom-instruction" type="text" maxlength="300" placeholder="補充要求（選填）" aria-label="重新翻譯的補充要求" />
                   <button class="line-button regenerate-button" type="button">Groq 重新翻譯</button>
                   {% if provider != "google" %}<button class="line-button google-button" type="button">查看 Google 版本</button>{% endif %}
+                  <button class="line-button preserve-source-button" type="button">保留原文</button>
                   <button class="line-button reset-line-button" type="button">還原</button>
                 </div>
 

@@ -7,17 +7,11 @@ from typing import Any
 
 from groq import APIConnectionError, APIStatusError, APITimeoutError, Groq, RateLimitError
 
+from services.chant import is_preserved_chant_line
 from services.text_parser import ParsedLine
 
 DEFAULT_MODEL = "openai/gpt-oss-20b"
 DEFAULT_TIMEOUT_SECONDS = 20.0
-
-PRESERVED_CHANT_LINES = {
-    "タッタタラリラ",
-    "ピーヒャラピーヒャラ",
-    "ピーヒャラピー",
-    "パッパパラパ",
-}
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +59,7 @@ class GroqTranslator:
         translatable_lines: list[ParsedLine] = []
         for line in source_lines:
             assert line.id is not None
-            if self._is_preserved_chant_line(line.text):
+            if is_preserved_chant_line(line.text):
                 translations[line.id] = line.text
             else:
                 translatable_lines.append(line)
@@ -73,10 +67,6 @@ class GroqTranslator:
         if translatable_lines:
             translations.update(self._translate_once(translatable_lines, source_lines))
         return translations
-
-    @staticmethod
-    def _is_preserved_chant_line(text: str) -> bool:
-        return "".join(text.split()) in PRESERVED_CHANT_LINES
 
     def _translate_once(
         self,
@@ -212,6 +202,10 @@ class GroqTranslator:
         if target_id not in expected_ids:
             raise GroqTranslationError("找不到要重新翻譯的句子，請重新整理後再試。", status_code=400)
 
+        target_line = next(line for line in source_lines if line.id == target_id)
+        if is_preserved_chant_line(target_line.text):
+            return target_line.text
+
         payload = {
             "lines": [{"id": line.id, "text": line.text} for line in source_lines],
             "current_translations": [
@@ -301,4 +295,3 @@ class GroqTranslator:
                 raise GroqTranslationError("翻譯結果格式異常，請重新嘗試。")
             translations[int(raw_id)] = translation.strip()
         return translations
-

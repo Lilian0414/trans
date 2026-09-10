@@ -327,6 +327,7 @@ button[aria-busy="true"]::before {
 .provider-badge, .edited-badge { padding: .18rem .35rem; border-bottom: 1px solid currentColor; border-radius: 0; font-size: .62rem; font-weight: 750; letter-spacing: .05em; }
 .provider-badge.groq { color: #79503e; }
 .provider-badge.google { color: #3c5f82; }
+.provider-badge.source { color: var(--moss); }
 .edited-badge { color: #746322; }
 
 .translation-label { display: block; margin: .85rem 0 .35rem; color: #776d64; font-size: .68rem; font-weight: 750; letter-spacing: .04em; }
